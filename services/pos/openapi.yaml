@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: LarisAI POS Service API
+  version: 1.0.0
+  description: API untuk transaksi kasir (POS), pemindai barcode, dan manajemen produk UMKM.
+paths:
+  /api/v1/products:
+    get:
+      summary: Ambil daftar produk aktif (is_archived = false)
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Cari produk berdasarkan nama atau barcode
+      responses:
+        '200':
+          description: Daftar produk berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductResponse'
+    post:
+      summary: Tambah produk baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Produk berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+
+  /api/v1/products/scan/{barcode}:
+    get:
+      summary: Cari produk berdasarkan kode barcode
+      parameters:
+        - in: path
+          name: barcode
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Produk ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '404':
+          description: Produk tidak ditemukan atau sudah diarsipkan
+
+  /api/v1/checkout:
+    post:
+      summary: Proses transaksi pembayaran kasir dan kurangi stok
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '201':
+          description: Transaksi berhasil dan struk dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          description: Validasi gagal atau stok tidak mencukupi
+
+  /api/v1/transactions:
+    get:
+      summary: Ambil riwayat transaksi
+      responses:
+        '200':
+          description: Riwayat transaksi berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponse'
+
+components:
+  schemas:
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        barcode:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: integer
+          format: int64
+        stock:
+          type: integer
+          format: int64
+        is_archived:
+          type: boolean
+    CreateProductRequest:
+      type: object
+      required:
+        - barcode
+        - name
+        - price
+        - stock
+      properties:
+        barcode:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: integer
+          format: int64
+        stock:
+          type: integer
+          format: int64
+    CheckoutItemRequest:
+      type: object
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          type: string
+        quantity:
+          type: integer
+    CheckoutRequest:
+      type: object
+      required:
+        - items
+        - payment_type
+      properties:
+        customer_id:
+          type: string
+        payment_type:
+          type: string
+          enum: [TUNAI, QRIS, DEBIT]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckoutItemRequest'
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        invoice_no:
+          type: string
+        customer_id:
+          type: string
+        total_amount:
+          type: integer
+          format: int64
+        payment_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+              name:
+                type: string
+              price:
+                type: integer
+              quantity:
+                type: integer
+              subtotal:
+                type: integer
