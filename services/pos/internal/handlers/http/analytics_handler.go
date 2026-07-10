@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/larisai/pos-service/internal/middleware"
 	"github.com/larisai/pos-service/internal/services"
 )
 
@@ -16,8 +17,7 @@ func NewAnalyticsHandler(analyticsSvc services.AnalyticsService) *AnalyticsHandl
 }
 
 func (h *AnalyticsHandler) RegisterRoutes(router fiber.Router) {
-	api := router.Group("/api/v1")
-	api.Get("/analytics/summary", h.GetSummary)
+	router.Get("/analytics/summary", middleware.AdminOnly(), h.GetSummary)
 }
 
 func (h *AnalyticsHandler) GetSummary(c *fiber.Ctx) error {

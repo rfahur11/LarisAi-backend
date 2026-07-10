@@ -19,17 +19,15 @@ func NewPOSHandler(productSvc services.ProductService, checkoutSvc services.Chec
 }
 
 func (h *POSHandler) RegisterRoutes(router fiber.Router) {
-	api := router.Group("/api/v1")
-
 	// Product endpoints
-	api.Get("/products", h.GetProducts)
-	api.Post("/products", h.CreateProduct)
-	api.Delete("/products/:id", h.DeleteProduct)
-	api.Get("/products/scan/:barcode", h.ScanBarcode)
+	router.Get("/products", h.GetProducts)
+	router.Post("/products", h.CreateProduct)
+	router.Delete("/products/:id", h.DeleteProduct)
+	router.Get("/products/scan/:barcode", h.ScanBarcode)
 
 	// Checkout & Transaction endpoints
-	api.Post("/checkout", h.Checkout)
-	api.Get("/transactions", h.GetTransactions)
+	router.Post("/checkout", h.Checkout)
+	router.Get("/transactions", h.GetTransactions)
 }
 
 func (h *POSHandler) GetProducts(c *fiber.Ctx) error {

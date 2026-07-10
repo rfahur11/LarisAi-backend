@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/larisai/pos-service/internal/config"
 	"github.com/larisai/pos-service/internal/handlers/http"
+	"github.com/larisai/pos-service/internal/middleware"
 	"github.com/larisai/pos-service/internal/repositories"
 	"github.com/larisai/pos-service/internal/services"
 )
@@ -25,15 +27,23 @@ func main() {
 	productRepo := repositories.NewProductRepository()
 	txRepo := repositories.NewTransactionRepository()
 	analyticsRepo := repositories.NewAnalyticsRepository()
+	userRepo := repositories.NewUserRepository()
 
 	// 3. Init Services
 	productSvc := services.NewProductService(productRepo)
 	checkoutSvc := services.NewCheckoutService(productRepo, txRepo)
 	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
+	authSvc := services.NewAuthService(userRepo)
+
+	// Seed Admin
+	if err := authSvc.SeedAdmin(context.Background()); err != nil {
+		log.Printf("⚠️ Gagal melakukan seeding admin: %v", err)
+	}
 
 	// 4. Init Handlers
 	posHandler := http.NewPOSHandler(productSvc, checkoutSvc)
 	analyticsHandler := http.NewAnalyticsHandler(analyticsSvc)
+	authHandler := http.NewAuthHandler(authSvc)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -56,8 +66,12 @@ func main() {
 	})
 
 	// Register Routes
-	posHandler.RegisterRoutes(app)
-	analyticsHandler.RegisterRoutes(app)
+	app.Post("/api/v1/auth/login", authHandler.Login)
+	
+	// PROTECTED ROUTES
+	protectedApi := app.Group("/api/v1", middleware.Protected())
+	posHandler.RegisterRoutes(protectedApi)
+	analyticsHandler.RegisterRoutes(protectedApi)
 
 	// Start server
 	port := os.Getenv("PORT")
