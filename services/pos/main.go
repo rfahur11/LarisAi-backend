@@ -24,13 +24,16 @@ func main() {
 	// 2. Init Repositories
 	productRepo := repositories.NewProductRepository()
 	txRepo := repositories.NewTransactionRepository()
+	analyticsRepo := repositories.NewAnalyticsRepository()
 
 	// 3. Init Services
 	productSvc := services.NewProductService(productRepo)
 	checkoutSvc := services.NewCheckoutService(productRepo, txRepo)
+	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
 
 	// 4. Init Handlers
 	posHandler := http.NewPOSHandler(productSvc, checkoutSvc)
+	analyticsHandler := http.NewAnalyticsHandler(analyticsSvc)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -54,6 +57,7 @@ func main() {
 
 	// Register Routes
 	posHandler.RegisterRoutes(app)
+	analyticsHandler.RegisterRoutes(app)
 
 	// Start server
 	port := os.Getenv("PORT")

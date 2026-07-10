@@ -89,8 +89,83 @@ paths:
                 items:
                   $ref: '#/components/schemas/TransactionResponse'
 
+  /api/v1/analytics/summary:
+    get:
+      summary: Ambil ringkasan analitik penjualan dan keuangan (Fase 2 Motor)
+      responses:
+        '200':
+          description: Ringkasan analitik berhasil diambil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSummaryResponse'
+
 components:
   schemas:
+    PaymentMethodBreakdown:
+      type: object
+      properties:
+        payment_type:
+          type: string
+          enum: [TUNAI, QRIS, DEBIT]
+        total_amount:
+          type: integer
+          format: int64
+        count:
+          type: integer
+        percentage:
+          type: number
+          format: double
+    TopSellingProduct:
+      type: object
+      properties:
+        product_id:
+          type: string
+        barcode:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        total_sold:
+          type: integer
+        total_amount:
+          type: integer
+          format: int64
+    DailySale:
+      type: object
+      properties:
+        date:
+          type: string
+          example: "2026-07-06"
+        total_amount:
+          type: integer
+          format: int64
+        order_count:
+          type: integer
+    AnalyticsSummaryResponse:
+      type: object
+      properties:
+        total_revenue:
+          type: integer
+          format: int64
+        total_orders:
+          type: integer
+        average_order_value:
+          type: integer
+          format: int64
+        payment_methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethodBreakdown'
+        top_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopSellingProduct'
+        daily_sales:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailySale'
     ProductResponse:
       type: object
       properties:
