@@ -34,6 +34,7 @@ func main() {
 	checkoutSvc := services.NewCheckoutService(productRepo, txRepo)
 	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
 	authSvc := services.NewAuthService(userRepo)
+	userSvc := services.NewUserService(userRepo)
 
 	// Seed Admin
 	if err := authSvc.SeedAdmin(context.Background()); err != nil {
@@ -44,6 +45,7 @@ func main() {
 	posHandler := http.NewPOSHandler(productSvc, checkoutSvc)
 	analyticsHandler := http.NewAnalyticsHandler(analyticsSvc)
 	authHandler := http.NewAuthHandler(authSvc)
+	userHandler := http.NewUserHandler(userSvc)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -72,6 +74,12 @@ func main() {
 	protectedApi := app.Group("/api/v1", middleware.Protected())
 	posHandler.RegisterRoutes(protectedApi)
 	analyticsHandler.RegisterRoutes(protectedApi)
+
+	// ADMIN ONLY ROUTES
+	adminApi := protectedApi.Group("/users", middleware.AdminOnly())
+	adminApi.Get("/", userHandler.GetUsers)
+	adminApi.Post("/", userHandler.CreateUser)
+	adminApi.Delete("/:id", userHandler.DeleteUser)
 
 	// Start server
 	port := os.Getenv("PORT")
