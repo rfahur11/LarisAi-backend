@@ -22,6 +22,7 @@ func (h *POSHandler) RegisterRoutes(router fiber.Router) {
 	// Product endpoints
 	router.Get("/products", h.GetProducts)
 	router.Post("/products", h.CreateProduct)
+	router.Put("/products/:id", h.UpdateProduct)
 	router.Delete("/products/:id", h.DeleteProduct)
 	router.Get("/products/scan/:barcode", h.ScanBarcode)
 
@@ -57,6 +58,24 @@ func (h *POSHandler) CreateProduct(c *fiber.Ctx) error {
 		})
 	}
 	return c.Status(fiber.StatusCreated).JSON(res)
+}
+
+func (h *POSHandler) UpdateProduct(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var req dto.CreateProductRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Format request tidak valid",
+		})
+	}
+
+	res, err := h.productSvc.UpdateProduct(c.Context(), id, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(res)
 }
 
 func (h *POSHandler) DeleteProduct(c *fiber.Ctx) error {

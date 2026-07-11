@@ -44,7 +44,7 @@ func TestUserService(t *testing.T) {
 	// 4. Clean up (Optional, but let's find the user and delete)
 	existingUser, _ := userRepo.FindByEmail(ctx, req.Email)
 	if existingUser != nil {
-		userRepo.Delete(ctx, existingUser.ID.Hex())
+		userRepo.Delete(ctx, existingUser.ID)
 		t.Log("Successfully cleaned up test user")
 	}
 }

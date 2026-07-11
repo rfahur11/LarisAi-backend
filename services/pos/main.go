@@ -36,6 +36,12 @@ func main() {
 	authSvc := services.NewAuthService(userRepo)
 	userSvc := services.NewUserService(userRepo)
 
+	// AI Engine URL
+	aiEngineURL := os.Getenv("AI_ENGINE_URL")
+	if aiEngineURL == "" {
+		aiEngineURL = "http://localhost:8001"
+	}
+
 	// Seed Admin
 	if err := authSvc.SeedAdmin(context.Background()); err != nil {
 		log.Printf("⚠️ Gagal melakukan seeding admin: %v", err)
@@ -46,6 +52,7 @@ func main() {
 	analyticsHandler := http.NewAnalyticsHandler(analyticsSvc)
 	authHandler := http.NewAuthHandler(authSvc)
 	userHandler := http.NewUserHandler(userSvc)
+	aiHandler := http.NewAIHandler(aiEngineURL)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -74,6 +81,12 @@ func main() {
 	protectedApi := app.Group("/api/v1", middleware.Protected())
 	posHandler.RegisterRoutes(protectedApi)
 	analyticsHandler.RegisterRoutes(protectedApi)
+
+	// AI ROUTES
+	aiApi := protectedApi.Group("/ai")
+	aiApi.Get("/forecasting/stockouts", aiHandler.GetStockoutPredictions)
+	aiApi.Get("/clustering/customers", aiHandler.GetCustomerClusters)
+	aiApi.Post("/promo/send", aiHandler.SendPromo)
 
 	// ADMIN ONLY ROUTES
 	adminApi := protectedApi.Group("/users", middleware.AdminOnly())

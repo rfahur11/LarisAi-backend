@@ -18,6 +18,7 @@ type ProductRepository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*entity.Product, error)
 	FindByBarcode(ctx context.Context, barcode string) (*entity.Product, error)
 	Create(ctx context.Context, product *entity.Product) error
+	Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error
 	UpdateStock(ctx context.Context, id primitive.ObjectID, quantityDelta int64) error
 	SoftDelete(ctx context.Context, id primitive.ObjectID) error
 }
@@ -93,6 +94,29 @@ func (r *productRepo) Create(ctx context.Context, product *entity.Product) error
 	}
 	if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
 		product.ID = oid
+	}
+	return nil
+}
+
+// Update mengubah data produk yang sudah ada.
+func (r *productRepo) Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error {
+	filter := bson.M{"_id": id, "is_archived": false}
+	update := bson.M{
+		"$set": bson.M{
+			"barcode":    product.Barcode,
+			"name":       product.Name,
+			"category":   product.Category,
+			"price":      product.Price,
+			"stock":      product.Stock,
+			"updated_at": time.Now(),
+		},
+	}
+	res, err := r.col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("produk tidak ditemukan atau tidak ada perubahan")
 	}
 	return nil
 }

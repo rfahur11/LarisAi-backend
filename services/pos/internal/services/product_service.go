@@ -14,6 +14,7 @@ type ProductService interface {
 	GetProducts(ctx context.Context, search string) ([]dto.ProductResponse, error)
 	GetProductByBarcode(ctx context.Context, barcode string) (*dto.ProductResponse, error)
 	CreateProduct(ctx context.Context, req dto.CreateProductRequest) (*dto.ProductResponse, error)
+	UpdateProduct(ctx context.Context, idStr string, req dto.CreateProductRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, idStr string) error
 }
 
@@ -77,6 +78,48 @@ func (s *productSvc) CreateProduct(ctx context.Context, req dto.CreateProductReq
 	}
 
 	resp := toProductResponse(*product)
+	return &resp, nil
+}
+
+func (s *productSvc) UpdateProduct(ctx context.Context, idStr string, req dto.CreateProductRequest) (*dto.ProductResponse, error) {
+	if req.Barcode == "" || req.Name == "" || req.Price <= 0 {
+		return nil, errors.New("barcode, nama produk, dan harga valid wajib diisi")
+	}
+
+	oid, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil, errors.New("format ID produk tidak valid")
+	}
+
+	existing, err := s.repo.FindByID(ctx, oid)
+	if err != nil || existing == nil {
+		return nil, errors.New("produk tidak ditemukan")
+	}
+
+	if existing.Barcode != req.Barcode {
+		dup, _ := s.repo.FindByBarcode(ctx, req.Barcode)
+		if dup != nil {
+			return nil, errors.New("produk dengan barcode tersebut sudah ada")
+		}
+	}
+
+	product := &entity.Product{
+		Barcode:  req.Barcode,
+		Name:     req.Name,
+		Category: req.Category,
+		Price:    req.Price,
+		Stock:    req.Stock,
+	}
+
+	if err := s.repo.Update(ctx, oid, product); err != nil {
+		return nil, err
+	}
+
+	updated, _ := s.repo.FindByID(ctx, oid)
+	if updated == nil {
+		updated = product // Fallback
+	}
+	resp := toProductResponse(*updated)
 	return &resp, nil
 }
 
