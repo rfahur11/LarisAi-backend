@@ -54,6 +54,8 @@ type TransactionResponse struct {
 	CustomerID  string                    `json:"customer_id,omitempty"`
 	TotalAmount int64                     `json:"total_amount"`
 	PaymentType string                    `json:"payment_type"`
+	PaymentURL  string                    `json:"payment_url,omitempty"`
+	Status      string                    `json:"status"`
 	Items       []TransactionItemResponse `json:"items"`
 	CreatedAt   time.Time                 `json:"created_at"`
 }

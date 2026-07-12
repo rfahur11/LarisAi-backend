@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/larisai/pos-service/internal/models/dto"
 	"github.com/larisai/pos-service/internal/models/entity"
 	"github.com/larisai/pos-service/internal/repositories"
+	"github.com/midtrans/midtrans-go"
+	"github.com/midtrans/midtrans-go/snap"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -98,11 +101,39 @@ func (s *checkoutSvc) ProcessCheckout(ctx context.Context, req dto.CheckoutReque
 		}
 	}
 
+	status := "paid" // Default untuk tunai
+	var paymentUrl string
+	if req.PaymentType == "QRIS" || req.PaymentType == "qris" {
+		status = "pending"
+		// Coba minta Snap URL dari Midtrans
+		serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
+		if serverKey != "" {
+			midtrans.ServerKey = serverKey
+			midtrans.Environment = midtrans.Sandbox
+
+			reqSnap := &snap.Request{
+				TransactionDetails: midtrans.TransactionDetails{
+					OrderID:  invoiceNo,
+					GrossAmt: totalAmount,
+				},
+				CreditCard: &snap.CreditCardDetails{
+					Secure: true,
+				},
+			}
+			snapResp, _ := snap.CreateTransaction(reqSnap)
+			if snapResp != nil {
+				paymentUrl = snapResp.RedirectURL
+			}
+		}
+	}
+
 	tx := &entity.Transaction{
 		InvoiceNo:   invoiceNo,
 		CustomerID:  custID,
 		TotalAmount: totalAmount,
 		PaymentType: req.PaymentType,
+		PaymentURL:  paymentUrl,
+		Status:      status,
 		Items:       txItems,
 	}
 
@@ -116,6 +147,8 @@ func (s *checkoutSvc) ProcessCheckout(ctx context.Context, req dto.CheckoutReque
 		CustomerID:  req.CustomerID,
 		TotalAmount: tx.TotalAmount,
 		PaymentType: tx.PaymentType,
+		PaymentURL:  tx.PaymentURL,
+		Status:      tx.Status,
 		Items:       respItems,
 		CreatedAt:   tx.CreatedAt,
 	}, nil
@@ -150,6 +183,8 @@ func (s *checkoutSvc) GetTransactions(ctx context.Context) ([]dto.TransactionRes
 			CustomerID:  custIDStr,
 			TotalAmount: tx.TotalAmount,
 			PaymentType: tx.PaymentType,
+			PaymentURL:  tx.PaymentURL,
+			Status:      tx.Status,
 			Items:       respItems,
 			CreatedAt:   tx.CreatedAt,
 		})

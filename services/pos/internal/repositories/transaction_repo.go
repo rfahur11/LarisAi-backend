@@ -15,6 +15,7 @@ import (
 type TransactionRepository interface {
 	Create(ctx context.Context, tx *entity.Transaction) error
 	FindAll(ctx context.Context) ([]entity.Transaction, error)
+	UpdateStatus(ctx context.Context, invoiceNo string, status string) error
 }
 
 type transactionRepo struct {
@@ -56,4 +57,18 @@ func (r *transactionRepo) FindAll(ctx context.Context) ([]entity.Transaction, er
 		return nil, err
 	}
 	return txs, nil
+}
+
+func (r *transactionRepo) UpdateStatus(ctx context.Context, invoiceNo string, status string) error {
+	filter := bson.M{"invoice_no": invoiceNo}
+	update := bson.M{"$set": bson.M{"status": status}}
+	
+	res, err := r.col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
 }

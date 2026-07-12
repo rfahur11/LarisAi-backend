@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, BackgroundTasks
 from typing import List
 from database import get_db
 from models import StockoutResponse, StockoutPrediction, ClusterResponse, CustomerCluster, PromoRequest, PromoResponse
 import datetime
+import os
+import httpx
 
 app = FastAPI(title="LarisAI AI Engine", version="1.0.0")
 
@@ -87,16 +89,38 @@ async def get_customer_clusters(db = Depends(get_db)):
     return ClusterResponse(silhouette_score=0.88, clusters=clusters)
 
 @app.post("/api/v1/ai/promo/send", response_model=PromoResponse)
-async def send_promo(req: PromoRequest):
-    # Simulasi pengiriman promo
+async def send_promo(req: PromoRequest, background_tasks: BackgroundTasks):
+    whatsapp_service_url = os.getenv('WHATSAPP_SERVICE_URL', 'http://localhost:8002/api/v1/whatsapp/send')
+    to_whatsapp_number = os.getenv('WHATSAPP_TEST_DESTINATION', '6281234567890') # Dummy destination for demo
+
     messages_sent = 0
+
     if req.cluster_label == "Loyal":
         messages_sent = 25
     elif req.cluster_label == "Beresiko Churn":
         messages_sent = 40
     else:
         messages_sent = 100
-        
+
+    # Kirim secara asinkron (background task) agar UI tidak nge-hang
+    async def send_baileys_message():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(whatsapp_service_url, json={
+                    "to": to_whatsapp_number,
+                    "message": req.message
+                })
+                if response.status_code == 200:
+                    print(f"Baileys message sent to {to_whatsapp_number}")
+                else:
+                    print(f"Failed to send Baileys message: {response.text}")
+        except Exception as e:
+            print(f"Failed to connect to WhatsApp service: {e}")
+
+    background_tasks.add_task(send_baileys_message)
+    # Untuk demo, kita mock mengirim 1 pesan ke nomor testing developer.
+    messages_sent = 1 
+
     return PromoResponse(success=True, messages_sent=messages_sent)
 
 if __name__ == "__main__":

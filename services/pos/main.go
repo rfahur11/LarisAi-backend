@@ -53,6 +53,7 @@ func main() {
 	authHandler := http.NewAuthHandler(authSvc)
 	userHandler := http.NewUserHandler(userSvc)
 	aiHandler := http.NewAIHandler(aiEngineURL)
+	paymentHandler := http.NewPaymentHandler(txRepo)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -76,6 +77,10 @@ func main() {
 
 	// Register Routes
 	app.Post("/api/v1/auth/login", authHandler.Login)
+	
+	// PUBLIC PAYMENT WEBHOOK
+	paymentApi := app.Group("/api/v1/payment")
+	paymentHandler.RegisterRoutes(paymentApi)
 	
 	// PROTECTED ROUTES
 	protectedApi := app.Group("/api/v1", middleware.Protected())

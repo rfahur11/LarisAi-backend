@@ -22,6 +22,8 @@ type Transaction struct {
 	CustomerID  *primitive.ObjectID `bson:"customer_id,omitempty" json:"customer_id,omitempty"`
 	TotalAmount int64               `bson:"total_amount" json:"total_amount"`
 	PaymentType string              `bson:"payment_type" json:"payment_type"`
+	PaymentURL  string              `bson:"payment_url,omitempty" json:"payment_url,omitempty"`
+	Status      string              `bson:"status" json:"status"`
 	Items       []TransactionItem   `bson:"items" json:"items"`
 	IsArchived  bool                `bson:"is_archived" json:"is_archived"`
 	CreatedAt   time.Time           `bson:"created_at" json:"created_at"`
