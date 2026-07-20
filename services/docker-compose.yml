@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: larisai-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: larisai
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - larisai-net
+
+  pos-service:
+    build:
+      context: ./pos
+      dockerfile: Dockerfile
+    container_name: larisai-pos-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=larisai_pos
+    depends_on:
+      - mongodb
+    networks:
+      - larisai-net
+
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    container_name: larisai-ai-engine
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - WHATSAPP_SERVICE_URL=http://whatsapp-service:8002/api/v1/whatsapp/send
+      - GEMINI_API_KEY=${GEMINI_API_KEY} # make sure this is provided in .env
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=larisai
+    depends_on:
+      - whatsapp-service
+    networks:
+      - larisai-net
+
+  whatsapp-service:
+    build:
+      context: ./whatsapp
+      dockerfile: Dockerfile
+    container_name: larisai-whatsapp-service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+    volumes:
+      - ./whatsapp/auth_info_baileys:/app/auth_info_baileys
+    networks:
+      - larisai-net
+
+networks:
+  larisai-net:
+    driver: bridge
+
+volumes:
+  mongodb_data:
