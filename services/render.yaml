@@ -1,0 +1,36 @@
+services:
+  # ============================================================
+  # POS Service (Go Fiber) - Backend Utama
+  # ============================================================
+  - type: web
+    name: larisai-pos
+    runtime: docker
+    repo: https://github.com/rfahur11/LarisAi-backend
+    dockerfilePath: services/pos/Dockerfile
+    dockerContext: services/pos
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: MONGO_URI
+        value: mongodb+srv://rfahrur6045_db_user:admin987@cluster0.2q0huva.mongodb.net/?appName=Cluster0
+      - key: MONGO_DB_NAME
+        value: larisai_pos
+      - key: MIDTRANS_SERVER_KEY
+        value: ""
+      - key: WHATSAPP_SERVICE_URL
+        value: https://larisai-whatsapp.onrender.com/api/v1/whatsapp/send
+
+  # ============================================================
+  # WhatsApp Service (Node.js Baileys)
+  # ============================================================
+  - type: web
+    name: larisai-whatsapp
+    runtime: docker
+    repo: https://github.com/rfahur11/LarisAi-backend
+    dockerfilePath: services/whatsapp/Dockerfile
+    dockerContext: services/whatsapp
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8002
