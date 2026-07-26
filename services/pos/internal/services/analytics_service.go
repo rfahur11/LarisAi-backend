@@ -113,7 +113,7 @@ func (s *analyticsService) GetSummary(ctx context.Context) (*dto.AnalyticsSummar
 	}
 
 	// Format payment methods
-	var paymentMethods []dto.PaymentMethodBreakdown
+	paymentMethods := make([]dto.PaymentMethodBreakdown, 0)
 	for pm, data := range paymentMap {
 		pct := 0.0
 		if totalRevenue > 0 {
@@ -131,7 +131,7 @@ func (s *analyticsService) GetSummary(ctx context.Context) (*dto.AnalyticsSummar
 	})
 
 	// Format top products
-	var topProducts []dto.TopSellingProduct
+	topProducts := make([]dto.TopSellingProduct, 0)
 	for _, tp := range productSalesMap {
 		topProducts = append(topProducts, *tp)
 	}
@@ -146,7 +146,7 @@ func (s *analyticsService) GetSummary(ctx context.Context) (*dto.AnalyticsSummar
 	}
 
 	// Format daily sales
-	var dailySales []dto.DailySale
+	dailySales := make([]dto.DailySale, 0)
 	for _, ds := range dailyMap {
 		dailySales = append(dailySales, *ds)
 	}

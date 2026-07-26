@@ -173,3 +173,43 @@ func TestProductService_DeleteProduct_Success(t *testing.T) {
 		t.Errorf("Expected product to be deleted from repo")
 	}
 }
+
+func TestProductService_GetProductByBarcode_Success(t *testing.T) {
+	repo := newMockProductRepo()
+	svc := services.NewProductService(repo)
+	ctx := context.Background()
+
+	id := primitive.NewObjectID()
+	repo.products[id.Hex()] = &entity.Product{
+		ID:        id,
+		Name:      "Kopi Kapal Api",
+		Barcode:   "8991234567890",
+		Price:     3000,
+		Stock:     50,
+		CreatedAt: time.Now(),
+	}
+
+	res, err := svc.GetProductByBarcode(ctx, "8991234567890")
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if res.Name != "Kopi Kapal Api" {
+		t.Errorf("Expected Name 'Kopi Kapal Api', got %s", res.Name)
+	}
+	if res.Price != 3000 {
+		t.Errorf("Expected Price 3000, got %d", res.Price)
+	}
+}
+
+func TestProductService_GetProductByBarcode_NotFound(t *testing.T) {
+	repo := newMockProductRepo()
+	svc := services.NewProductService(repo)
+	ctx := context.Background()
+
+	_, err := svc.GetProductByBarcode(ctx, "NON_EXISTENT_BARCODE")
+	if err == nil {
+		t.Fatal("Expected error for non-existent barcode, got nil")
+	}
+}
+
