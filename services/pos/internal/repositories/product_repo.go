@@ -33,9 +33,24 @@ func NewProductRepository() ProductRepository {
 	}
 }
 
+func getStoreID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if v := ctx.Value("store_id"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 // FindAll mengambil daftar produk aktif (is_archived: false).
 func (r *productRepo) FindAll(ctx context.Context, search string) ([]entity.Product, error) {
 	filter := bson.M{"is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	if search != "" {
 		filter["$or"] = []bson.M{
 			{"name": bson.M{"$regex": search, "$options": "i"}},
@@ -59,8 +74,12 @@ func (r *productRepo) FindAll(ctx context.Context, search string) ([]entity.Prod
 }
 
 func (r *productRepo) FindByID(ctx context.Context, id primitive.ObjectID) (*entity.Product, error) {
+	filter := bson.M{"_id": id, "is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	var product entity.Product
-	err := r.col.FindOne(ctx, bson.M{"_id": id, "is_archived": false}).Decode(&product)
+	err := r.col.FindOne(ctx, filter).Decode(&product)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -72,8 +91,12 @@ func (r *productRepo) FindByID(ctx context.Context, id primitive.ObjectID) (*ent
 
 // FindByBarcode untuk fitur Scanner di kasir (<10ms lookup).
 func (r *productRepo) FindByBarcode(ctx context.Context, barcode string) (*entity.Product, error) {
+	filter := bson.M{"barcode": barcode, "is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	var product entity.Product
-	err := r.col.FindOne(ctx, bson.M{"barcode": barcode, "is_archived": false}).Decode(&product)
+	err := r.col.FindOne(ctx, filter).Decode(&product)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -87,6 +110,9 @@ func (r *productRepo) Create(ctx context.Context, product *entity.Product) error
 	product.IsArchived = false
 	product.CreatedAt = time.Now()
 	product.UpdatedAt = time.Now()
+	if product.StoreID == "" {
+		product.StoreID = getStoreID(ctx)
+	}
 
 	res, err := r.col.InsertOne(ctx, product)
 	if err != nil {
@@ -101,6 +127,9 @@ func (r *productRepo) Create(ctx context.Context, product *entity.Product) error
 // Update mengubah data produk yang sudah ada.
 func (r *productRepo) Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error {
 	filter := bson.M{"_id": id, "is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	update := bson.M{
 		"$set": bson.M{
 			"barcode":    product.Barcode,
@@ -127,6 +156,9 @@ func (r *productRepo) UpdateStock(ctx context.Context, id primitive.ObjectID, qu
 		"_id":         id,
 		"is_archived": false,
 	}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	// Jika mengurangi stok, pastikan stok >= kuantitas yang diminta
 	if quantityDelta < 0 {
 		filter["stock"] = bson.M{"$gte": -quantityDelta}
@@ -150,6 +182,9 @@ func (r *productRepo) UpdateStock(ctx context.Context, id primitive.ObjectID, qu
 // SoftDelete mengarsipkan produk dengan mengatur is_archived = true.
 func (r *productRepo) SoftDelete(ctx context.Context, id primitive.ObjectID) error {
 	filter := bson.M{"_id": id, "is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	update := bson.M{
 		"$set": bson.M{
 			"is_archived": true,

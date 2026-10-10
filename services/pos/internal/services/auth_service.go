@@ -45,11 +45,22 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 
 	// Generate JWT
+	storeID := user.StoreID
+	if storeID == "" {
+		storeID = "STORE_BERKAH_01"
+	}
+	storeName := user.StoreName
+	if storeName == "" {
+		storeName = "Toko Berkah Jaya"
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"role":    user.Role,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(), // 1 day expiration
+		"user_id":    user.ID,
+		"email":      user.Email,
+		"role":       user.Role,
+		"store_id":   storeID,
+		"store_name": storeName,
+		"exp":        time.Now().Add(time.Hour * 24 * 30).Unix(), // 30 days expiration for POS terminal
 	})
 
 	tokenString, err := token.SignedString(s.jwtSecret)
@@ -58,30 +69,48 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 
 	return &dto.LoginResponse{
-		Token: tokenString,
-		User:  *user,
+		Token:     tokenString,
+		StoreID:   storeID,
+		StoreName: storeName,
+		User:      *user,
 	}, nil
 }
 
-// SeedAdmin seeds the default admin if no users exist
+// SeedAdmin seeds the default multi-tenant demo stores if they don't exist
 func (s *AuthService) SeedAdmin(ctx context.Context) error {
-	count, err := s.userRepo.Count(ctx)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil // Already seeded
-	}
-
 	hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-	admin := &entity.User{
-		Name:         "Pemilik LarisAI",
-		Email:        "admin@larisai.com",
-		PasswordHash: string(hash),
-		Role:         entity.RoleAdmin,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+
+	// Toko 1: Toko Berkah Jaya
+	admin1, _ := s.userRepo.FindByEmail(ctx, "admin@larisai.com")
+	if admin1 == nil {
+		admin1 = &entity.User{
+			StoreID:      "STORE_BERKAH_01",
+			StoreName:    "Toko Berkah Jaya",
+			Name:         "Pemilik Toko Berkah",
+			Email:        "admin@larisai.com",
+			PasswordHash: string(hash),
+			Role:         entity.RoleAdmin,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		_ = s.userRepo.Create(ctx, admin1)
 	}
 
-	return s.userRepo.Create(ctx, admin)
+	// Toko 2: Warung Sejahtera
+	admin2, _ := s.userRepo.FindByEmail(ctx, "toko2@larisai.com")
+	if admin2 == nil {
+		admin2 = &entity.User{
+			StoreID:      "STORE_SEJAHTERA_02",
+			StoreName:    "Warung Sejahtera UMKM",
+			Name:         "Pemilik Warung Sejahtera",
+			Email:        "toko2@larisai.com",
+			PasswordHash: string(hash),
+			Role:         entity.RoleAdmin,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		_ = s.userRepo.Create(ctx, admin2)
+	}
+
+	return nil
 }

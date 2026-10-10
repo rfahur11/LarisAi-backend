@@ -27,8 +27,23 @@ func NewAnalyticsRepository() AnalyticsRepository {
 	}
 }
 
+func getStoreID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if v := ctx.Value("store_id"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 func (r *analyticsRepo) GetValidTransactions(ctx context.Context) ([]entity.Transaction, error) {
 	filter := bson.M{"is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}})
 
 	cursor, err := r.txCol.Find(ctx, filter, opts)
@@ -46,6 +61,9 @@ func (r *analyticsRepo) GetValidTransactions(ctx context.Context) ([]entity.Tran
 
 func (r *analyticsRepo) GetActiveProducts(ctx context.Context) ([]entity.Product, error) {
 	filter := bson.M{"is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	cursor, err := r.prodCol.Find(ctx, filter)
 	if err != nil {
 		return nil, err

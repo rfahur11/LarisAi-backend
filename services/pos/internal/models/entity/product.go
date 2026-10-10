@@ -8,6 +8,7 @@ import (
 // Product merepresentasikan skema koleksi barang di MongoDB dengan Soft Delete (IsArchived).
 type Product struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	StoreID    string             `bson:"store_id,omitempty" json:"store_id,omitempty"`
 	Barcode    string             `bson:"barcode" json:"barcode"`
 	Name       string             `bson:"name" json:"name"`
 	Category   string             `bson:"category" json:"category"`

@@ -9,6 +9,8 @@ const (
 
 type User struct {
 	ID           string    `json:"id" bson:"_id,omitempty"`
+	StoreID      string    `json:"store_id" bson:"store_id"`
+	StoreName    string    `json:"store_name" bson:"store_name"`
 	Name         string    `json:"name" bson:"name"`
 	Email        string    `json:"email" bson:"email"`
 	PasswordHash string    `json:"-" bson:"password_hash"`

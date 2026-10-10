@@ -18,6 +18,7 @@ type TransactionItem struct {
 // Transaction merepresentasikan invoice kasir yang tercatat di MongoDB.
 type Transaction struct {
 	ID          primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
+	StoreID     string              `bson:"store_id,omitempty" json:"store_id,omitempty"`
 	InvoiceNo   string              `bson:"invoice_no" json:"invoice_no"`
 	CustomerID  *primitive.ObjectID `bson:"customer_id,omitempty" json:"customer_id,omitempty"`
 	TotalAmount int64               `bson:"total_amount" json:"total_amount"`

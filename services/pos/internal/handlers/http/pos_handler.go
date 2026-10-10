@@ -33,7 +33,7 @@ func (h *POSHandler) RegisterRoutes(router fiber.Router) {
 
 func (h *POSHandler) GetProducts(c *fiber.Ctx) error {
 	search := c.Query("search", "")
-	products, err := h.productSvc.GetProducts(c.Context(), search)
+	products, err := h.productSvc.GetProducts(c.UserContext(), search)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Gagal mengambil daftar produk",
@@ -51,7 +51,7 @@ func (h *POSHandler) CreateProduct(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := h.productSvc.CreateProduct(c.Context(), req)
+	res, err := h.productSvc.CreateProduct(c.UserContext(), req)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -69,7 +69,7 @@ func (h *POSHandler) UpdateProduct(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := h.productSvc.UpdateProduct(c.Context(), id, req)
+	res, err := h.productSvc.UpdateProduct(c.UserContext(), id, req)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -80,7 +80,7 @@ func (h *POSHandler) UpdateProduct(c *fiber.Ctx) error {
 
 func (h *POSHandler) DeleteProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
-	if err := h.productSvc.DeleteProduct(c.Context(), id); err != nil {
+	if err := h.productSvc.DeleteProduct(c.UserContext(), id); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -92,7 +92,7 @@ func (h *POSHandler) DeleteProduct(c *fiber.Ctx) error {
 
 func (h *POSHandler) ScanBarcode(c *fiber.Ctx) error {
 	barcode := c.Params("barcode")
-	product, err := h.productSvc.GetProductByBarcode(c.Context(), barcode)
+	product, err := h.productSvc.GetProductByBarcode(c.UserContext(), barcode)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": err.Error(),
@@ -109,7 +109,7 @@ func (h *POSHandler) Checkout(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := h.checkoutSvc.ProcessCheckout(c.Context(), req)
+	res, err := h.checkoutSvc.ProcessCheckout(c.UserContext(), req)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -119,7 +119,7 @@ func (h *POSHandler) Checkout(c *fiber.Ctx) error {
 }
 
 func (h *POSHandler) GetTransactions(c *fiber.Ctx) error {
-	txs, err := h.checkoutSvc.GetTransactions(c.Context())
+	txs, err := h.checkoutSvc.GetTransactions(c.UserContext())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Gagal mengambil riwayat transaksi",

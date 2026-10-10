@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -14,6 +15,8 @@ import (
 	"github.com/larisai/pos-service/internal/middleware"
 	"github.com/larisai/pos-service/internal/repositories"
 	"github.com/larisai/pos-service/internal/services"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func main() {
@@ -22,6 +25,17 @@ func main() {
 
 	// 1. Load config & DB
 	config.InitMongoDB()
+
+	// 1.1 Ensure Multi-Tenant Compound Indexes
+	ctxIndex, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, _ = config.DB.Collection("products").Indexes().CreateMany(ctxIndex, []mongo.IndexModel{
+		{Keys: bson.D{{Key: "store_id", Value: 1}, {Key: "barcode", Value: 1}}},
+		{Keys: bson.D{{Key: "store_id", Value: 1}, {Key: "is_archived", Value: 1}}},
+	})
+	_, _ = config.DB.Collection("transactions").Indexes().CreateMany(ctxIndex, []mongo.IndexModel{
+		{Keys: bson.D{{Key: "store_id", Value: 1}, {Key: "created_at", Value: -1}}},
+	})
+	cancel()
 
 	// 2. Init Repositories
 	productRepo := repositories.NewProductRepository()

@@ -17,11 +17,11 @@ func NewAnalyticsHandler(analyticsSvc services.AnalyticsService) *AnalyticsHandl
 }
 
 func (h *AnalyticsHandler) RegisterRoutes(router fiber.Router) {
-	router.Get("/analytics/summary", middleware.AdminOnly(), h.GetSummary)
+	router.Get("/analytics/summary", h.GetSummary)
 }
 
 func (h *AnalyticsHandler) GetSummary(c *fiber.Ctx) error {
-	summary, err := h.analyticsSvc.GetSummary(c.Context())
+	summary, err := h.analyticsSvc.GetSummary(c.UserContext())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":  "Gagal mengambil ringkasan analitik",

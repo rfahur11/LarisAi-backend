@@ -8,6 +8,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string      `json:"token"`
-	User  entity.User `json:"user"`
+	Token     string      `json:"token"`
+	StoreID   string      `json:"store_id"`
+	StoreName string      `json:"store_name"`
+	User      entity.User `json:"user"`
 }

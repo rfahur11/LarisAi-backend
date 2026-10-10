@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -54,10 +55,31 @@ func Protected() fiber.Handler {
 			})
 		}
 
+		storeID, _ := claims["store_id"].(string)
+		storeName, _ := claims["store_name"].(string)
+
 		// Set to context for handlers to use
 		c.Locals("user_id", claims["user_id"])
 		c.Locals("email", claims["email"])
 		c.Locals("role", claims["role"])
+		c.Locals("store_id", storeID)
+		c.Locals("store_name", storeName)
+
+		// Set to Go context
+		userCtx := c.UserContext()
+		if userCtx == nil {
+			userCtx = context.Background()
+		}
+		if storeID != "" {
+			userCtx = context.WithValue(userCtx, "store_id", storeID)
+		}
+		if storeName != "" {
+			userCtx = context.WithValue(userCtx, "store_name", storeName)
+		}
+		if userID, ok := claims["user_id"].(string); ok && userID != "" {
+			userCtx = context.WithValue(userCtx, "user_id", userID)
+		}
+		c.SetUserContext(userCtx)
 
 		return c.Next()
 	}

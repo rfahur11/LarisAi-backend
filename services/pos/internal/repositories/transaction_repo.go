@@ -28,9 +28,24 @@ func NewTransactionRepository() TransactionRepository {
 	}
 }
 
+func getStoreID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if v := ctx.Value("store_id"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 func (r *transactionRepo) Create(ctx context.Context, tx *entity.Transaction) error {
 	tx.IsArchived = false
 	tx.CreatedAt = time.Now()
+	if tx.StoreID == "" {
+		tx.StoreID = getStoreID(ctx)
+	}
 
 	res, err := r.col.InsertOne(ctx, tx)
 	if err != nil {
@@ -44,6 +59,9 @@ func (r *transactionRepo) Create(ctx context.Context, tx *entity.Transaction) er
 
 func (r *transactionRepo) FindAll(ctx context.Context) ([]entity.Transaction, error) {
 	filter := bson.M{"is_archived": false}
+	if storeID := getStoreID(ctx); storeID != "" {
+		filter["store_id"] = storeID
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
 
 	cursor, err := r.col.Find(ctx, filter, opts)
