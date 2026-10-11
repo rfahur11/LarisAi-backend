@@ -100,6 +100,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalyticsSummaryResponse'
 
+  /api/v1/auth/register-merchant:
+    post:
+      summary: Registrasi merchant/owner baru dengan 14-day free trial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, store_name, email, password, phone]
+              properties:
+                name: {type: string}
+                store_name: {type: string}
+                email: {type: string}
+                password: {type: string}
+                phone: {type: string}
+                category: {type: string}
+      responses:
+        '201':
+          description: Merchant berhasil terdaftar dan token JWT diterbitkan
+
+  /api/v1/subscription/status:
+    get:
+      summary: Cek status langganan tenant aktif (trial, active, grace period, expired)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status langganan berhasil diambil
+
+  /api/v1/subscription/sync:
+    post:
+      summary: Webhook Weboz untuk sinkronisasi perpanjangan langganan otomatis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, plan_tier]
+              properties:
+                store_id: {type: string}
+                plan_tier: {type: string}
+                duration_months: {type: integer}
+                order_id: {type: string}
+      responses:
+        '200':
+          description: Langganan berhasil disinkronisasi
+
 components:
   schemas:
     PaymentMethodBreakdown:

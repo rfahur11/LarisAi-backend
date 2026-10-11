@@ -61,14 +61,20 @@
 - **Direktori & Repository**: `d:\porto\larisAi\LarisAi-backend` (`git@github.com:rfahur11/LarisAi-backend.git`)
 - **Services**:
   - `pos`: Golang REST API (Port 8080)
-    - `GET /api/v1/products`: Daftar produk aktif
+    - `POST /api/v1/auth/login`: Login user kasir / owner (dengan data subscription & store)
+    - `POST /api/v1/auth/register-merchant`: Registrasi owner + tenant baru dengan 14 hari free trial otomatis
+    - `GET /api/v1/subscription/status`: Status langganan tenant (sisa hari, status grace period 3 hari, kuota outlet)
+    - `POST /api/v1/subscription/sync`: Webhook Weboz untuk perpanjangan lisensi tenant instan
+    - `GET /api/v1/products`: Daftar produk aktif terisolasi tenant (`store_id`)
     - `GET /api/v1/products/scan/{barcode}`: Cari produk by barcode
     - `POST /api/v1/products`: Tambah produk
     - `POST /api/v1/checkout`: Proses transaksi kasir & kurangi stok
     - `GET /api/v1/transactions`: Riwayat transaksi
     - `GET /api/v1/analytics/summary`: Ringkasan omset & metode pembayaran
+    - `POST /api/v1/payment/notification`: Webhook Midtrans / QRIS
   - `whatsapp`: Node.js Baileys service (Port 8002)
     - `POST /api/v1/whatsapp/send`: Pengiriman pesan otomatis WA
+  - `deploy`: Template Azure Container Apps (`azure-container-apps.bicep` & `deploy-azure.ps1`) di region `southeastasia` dengan scale-to-zero FinOps protection ($100 Student Cap).
 
 ### C. LarisAi-AI (AI Engine Service)
 - **Direktori & Repository**: `d:\porto\larisAi\LarisAi-AI` (`git@github.com:rfahur11/LarisAi-AI.git`)

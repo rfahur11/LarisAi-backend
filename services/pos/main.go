@@ -35,6 +35,10 @@ func main() {
 	_, _ = config.DB.Collection("transactions").Indexes().CreateMany(ctxIndex, []mongo.IndexModel{
 		{Keys: bson.D{{Key: "store_id", Value: 1}, {Key: "created_at", Value: -1}}},
 	})
+	_, _ = config.DB.Collection("stores").Indexes().CreateMany(ctxIndex, []mongo.IndexModel{
+		{Keys: bson.D{{Key: "store_id", Value: 1}}},
+		{Keys: bson.D{{Key: "owner_email", Value: 1}}},
+	})
 	cancel()
 
 	// 2. Init Repositories
@@ -42,13 +46,15 @@ func main() {
 	txRepo := repositories.NewTransactionRepository()
 	analyticsRepo := repositories.NewAnalyticsRepository()
 	userRepo := repositories.NewUserRepository()
+	storeRepo := repositories.NewStoreRepository()
 
 	// 3. Init Services
 	productSvc := services.NewProductService(productRepo)
 	checkoutSvc := services.NewCheckoutService(productRepo, txRepo)
 	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
-	authSvc := services.NewAuthService(userRepo)
+	authSvc := services.NewAuthService(userRepo, storeRepo)
 	userSvc := services.NewUserService(userRepo)
+	subscriptionSvc := services.NewSubscriptionService(storeRepo)
 
 	// AI Engine URL
 	aiEngineURL := os.Getenv("AI_ENGINE_URL")
@@ -56,7 +62,7 @@ func main() {
 		aiEngineURL = "http://localhost:8001"
 	}
 
-	// Seed Admin
+	// Seed Admin & Demo Stores
 	if err := authSvc.SeedAdmin(context.Background()); err != nil {
 		log.Printf("⚠️ Gagal melakukan seeding admin: %v", err)
 	}
@@ -68,6 +74,7 @@ func main() {
 	userHandler := http.NewUserHandler(userSvc)
 	aiHandler := http.NewAIHandler(aiEngineURL)
 	paymentHandler := http.NewPaymentHandler(txRepo)
+	subscriptionHandler := http.NewSubscriptionHandler(subscriptionSvc)
 
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
@@ -84,30 +91,37 @@ func main() {
 	// Health check endpoint
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
-			"status": "OK",
+			"status":  "OK",
 			"service": "LarisAI POS Service",
 		})
 	})
 
-	// Register Routes
+	// Public Auth Routes
 	app.Post("/api/v1/auth/login", authHandler.Login)
-	
-	// PUBLIC PAYMENT WEBHOOK
+	app.Post("/api/v1/auth/register-merchant", authHandler.RegisterMerchant)
+
+	// Public Payment & Webhook Routes
 	paymentApi := app.Group("/api/v1/payment")
 	paymentHandler.RegisterRoutes(paymentApi)
-	
-	// PROTECTED ROUTES
+
+	subscriptionPublicApi := app.Group("/api/v1/subscription")
+	subscriptionHandler.RegisterPublicRoutes(subscriptionPublicApi)
+
+	// Protected Routes (POS, Analytics, Subscription Status)
 	protectedApi := app.Group("/api/v1", middleware.Protected())
 	posHandler.RegisterRoutes(protectedApi)
 	analyticsHandler.RegisterRoutes(protectedApi)
 
-	// AI ROUTES
+	subscriptionProtectedApi := protectedApi.Group("/subscription")
+	subscriptionHandler.RegisterProtectedRoutes(subscriptionProtectedApi)
+
+	// AI Routes
 	aiApi := protectedApi.Group("/ai")
 	aiApi.Get("/forecasting/stockouts", aiHandler.GetStockoutPredictions)
 	aiApi.Get("/clustering/customers", aiHandler.GetCustomerClusters)
 	aiApi.Post("/promo/send", aiHandler.SendPromo)
 
-	// ADMIN ONLY ROUTES
+	// Admin Only Routes
 	adminApi := protectedApi.Group("/users", middleware.AdminOnly())
 	adminApi.Get("/", userHandler.GetUsers)
 	adminApi.Post("/", userHandler.CreateUser)

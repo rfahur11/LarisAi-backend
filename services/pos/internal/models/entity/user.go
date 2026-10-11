@@ -13,6 +13,7 @@ type User struct {
 	StoreName    string    `json:"store_name" bson:"store_name"`
 	Name         string    `json:"name" bson:"name"`
 	Email        string    `json:"email" bson:"email"`
+	Phone        string    `json:"phone,omitempty" bson:"phone,omitempty"`
 	PasswordHash string    `json:"-" bson:"password_hash"`
 	Role         string    `json:"role" bson:"role"` // "admin" or "cashier"
 	CreatedAt    time.Time `json:"created_at" bson:"created_at"`

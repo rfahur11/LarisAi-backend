@@ -33,18 +33,6 @@ func NewProductRepository() ProductRepository {
 	}
 }
 
-func getStoreID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	if v := ctx.Value("store_id"); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
-}
-
 // FindAll mengambil daftar produk aktif (is_archived: false).
 func (r *productRepo) FindAll(ctx context.Context, search string) ([]entity.Product, error) {
 	filter := bson.M{"is_archived": false}

@@ -42,3 +42,33 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		"data":    res,
 	})
 }
+
+func (h *AuthHandler) RegisterMerchant(c *fiber.Ctx) error {
+	var req dto.RegisterMerchantRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error": fiber.Map{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request body",
+			},
+		})
+	}
+
+	res, err := h.authService.RegisterMerchant(c.Context(), &req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error": fiber.Map{
+				"code":    "REGISTRATION_FAILED",
+				"message": err.Error(),
+			},
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"success": true,
+		"message": "Merchant registered successfully with 14-day free trial",
+		"data":    res,
+	})
+}

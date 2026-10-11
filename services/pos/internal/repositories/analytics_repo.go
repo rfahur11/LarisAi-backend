@@ -27,18 +27,6 @@ func NewAnalyticsRepository() AnalyticsRepository {
 	}
 }
 
-func getStoreID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	if v := ctx.Value("store_id"); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
-}
-
 func (r *analyticsRepo) GetValidTransactions(ctx context.Context) ([]entity.Transaction, error) {
 	filter := bson.M{"is_archived": false}
 	if storeID := getStoreID(ctx); storeID != "" {
