@@ -2,7 +2,6 @@ package http
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/larisai/pos-service/internal/middleware"
 	"github.com/larisai/pos-service/internal/services"
 )
 
