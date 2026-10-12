@@ -14,6 +14,7 @@ type ProductService interface {
 	GetProducts(ctx context.Context, search string) ([]dto.ProductResponse, error)
 	GetProductByBarcode(ctx context.Context, barcode string) (*dto.ProductResponse, error)
 	CreateProduct(ctx context.Context, req dto.CreateProductRequest) (*dto.ProductResponse, error)
+	CreateBulkProducts(ctx context.Context, req dto.BulkCreateProductsRequest) (*dto.BulkCreateProductsResponse, error)
 	UpdateProduct(ctx context.Context, idStr string, req dto.CreateProductRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, idStr string) error
 }
@@ -66,11 +67,13 @@ func (s *productSvc) CreateProduct(ctx context.Context, req dto.CreateProductReq
 	}
 
 	product := &entity.Product{
-		Barcode:  req.Barcode,
-		Name:     req.Name,
-		Category: req.Category,
-		Price:    req.Price,
-		Stock:    req.Stock,
+		StoreID:   req.StoreID,
+		Barcode:   req.Barcode,
+		Name:      req.Name,
+		Category:  req.Category,
+		Price:     req.Price,
+		Stock:     req.Stock,
+		ImagePath: req.ImagePath,
 	}
 
 	if err := s.repo.Create(ctx, product); err != nil {
@@ -79,6 +82,50 @@ func (s *productSvc) CreateProduct(ctx context.Context, req dto.CreateProductReq
 
 	resp := toProductResponse(*product)
 	return &resp, nil
+}
+
+func (s *productSvc) CreateBulkProducts(ctx context.Context, req dto.BulkCreateProductsRequest) (*dto.BulkCreateProductsResponse, error) {
+	if len(req.Products) == 0 {
+		return &dto.BulkCreateProductsResponse{
+			TotalReceived: 0,
+			TotalInserted: 0,
+			TotalSkipped:  0,
+		}, nil
+	}
+
+	entities := make([]entity.Product, 0, len(req.Products))
+	skippedErrors := make([]string, 0)
+
+	for _, p := range req.Products {
+		if p.Name == "" || p.Price <= 0 {
+			skippedErrors = append(skippedErrors, "Produk '"+p.Name+"' dilewati: nama atau harga tidak valid")
+			continue
+		}
+		if p.Category == "" {
+			p.Category = "Umum"
+		}
+		entities = append(entities, entity.Product{
+			StoreID:   p.StoreID,
+			Barcode:   p.Barcode,
+			Name:      p.Name,
+			Category:  p.Category,
+			Price:     p.Price,
+			Stock:     p.Stock,
+			ImagePath: p.ImagePath,
+		})
+	}
+
+	inserted, _, repoSkippedErrors, err := s.repo.CreateBulk(ctx, entities)
+	skippedErrors = append(skippedErrors, repoSkippedErrors...)
+
+	resp := &dto.BulkCreateProductsResponse{
+		TotalReceived: len(req.Products),
+		TotalInserted: inserted,
+		TotalSkipped:  len(req.Products) - inserted,
+		SkippedErrors: skippedErrors,
+	}
+
+	return resp, err
 }
 
 func (s *productSvc) UpdateProduct(ctx context.Context, idStr string, req dto.CreateProductRequest) (*dto.ProductResponse, error) {
@@ -104,11 +151,12 @@ func (s *productSvc) UpdateProduct(ctx context.Context, idStr string, req dto.Cr
 	}
 
 	product := &entity.Product{
-		Barcode:  req.Barcode,
-		Name:     req.Name,
-		Category: req.Category,
-		Price:    req.Price,
-		Stock:    req.Stock,
+		Barcode:   req.Barcode,
+		Name:      req.Name,
+		Category:  req.Category,
+		Price:     req.Price,
+		Stock:     req.Stock,
+		ImagePath: req.ImagePath,
 	}
 
 	if err := s.repo.Update(ctx, oid, product); err != nil {
@@ -134,11 +182,13 @@ func (s *productSvc) DeleteProduct(ctx context.Context, idStr string) error {
 func toProductResponse(p entity.Product) dto.ProductResponse {
 	return dto.ProductResponse{
 		ID:         p.ID.Hex(),
+		StoreID:    p.StoreID,
 		Barcode:    p.Barcode,
 		Name:       p.Name,
 		Category:   p.Category,
 		Price:      p.Price,
 		Stock:      p.Stock,
+		ImagePath:  p.ImagePath,
 		IsArchived: p.IsArchived,
 		CreatedAt:  p.CreatedAt,
 		UpdatedAt:  p.UpdatedAt,

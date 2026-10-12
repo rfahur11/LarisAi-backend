@@ -18,6 +18,7 @@ type ProductRepository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*entity.Product, error)
 	FindByBarcode(ctx context.Context, barcode string) (*entity.Product, error)
 	Create(ctx context.Context, product *entity.Product) error
+	CreateBulk(ctx context.Context, products []entity.Product) (int, int, []string, error)
 	Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error
 	UpdateStock(ctx context.Context, id primitive.ObjectID, quantityDelta int64) error
 	SoftDelete(ctx context.Context, id primitive.ObjectID) error
@@ -112,6 +113,81 @@ func (r *productRepo) Create(ctx context.Context, product *entity.Product) error
 	return nil
 }
 
+// CreateBulk memasukkan banyak produk sekaligus menggunakan InsertMany.
+func (r *productRepo) CreateBulk(ctx context.Context, products []entity.Product) (int, int, []string, error) {
+	if len(products) == 0 {
+		return 0, 0, nil, nil
+	}
+
+	storeID := getStoreID(ctx)
+	now := time.Now()
+
+	barcodes := make([]string, 0, len(products))
+	for _, p := range products {
+		if p.Barcode != "" {
+			barcodes = append(barcodes, p.Barcode)
+		}
+	}
+
+	filter := bson.M{
+		"is_archived": false,
+		"barcode":     bson.M{"$in": barcodes},
+	}
+	if storeID != "" {
+		filter["store_id"] = storeID
+	}
+
+	cursor, err := r.col.Find(ctx, filter)
+	existingMap := make(map[string]bool)
+	if err == nil {
+		defer cursor.Close(ctx)
+		var existing []entity.Product
+		if err := cursor.All(ctx, &existing); err == nil {
+			for _, ep := range existing {
+				existingMap[ep.Barcode] = true
+			}
+		}
+	}
+
+	docs := make([]interface{}, 0, len(products))
+	skippedErrors := make([]string, 0)
+	insertedCount := 0
+
+	for _, p := range products {
+		if p.Barcode != "" && existingMap[p.Barcode] {
+			skippedErrors = append(skippedErrors, "Barcode "+p.Barcode+" sudah terdaftar")
+			continue
+		}
+		if p.Barcode != "" {
+			existingMap[p.Barcode] = true
+		}
+
+		p.ID = primitive.NewObjectID()
+		if p.StoreID == "" {
+			p.StoreID = storeID
+		}
+		p.CreatedAt = now
+		p.UpdatedAt = now
+		p.IsArchived = false
+
+		docs = append(docs, p)
+	}
+
+	if len(docs) > 0 {
+		opts := options.InsertMany().SetOrdered(false)
+		res, err := r.col.InsertMany(ctx, docs, opts)
+		if err != nil {
+			if res != nil {
+				insertedCount = len(res.InsertedIDs)
+			}
+			return insertedCount, len(skippedErrors), skippedErrors, err
+		}
+		insertedCount = len(res.InsertedIDs)
+	}
+
+	return insertedCount, len(skippedErrors), skippedErrors, nil
+}
+
 // Update mengubah data produk yang sudah ada.
 func (r *productRepo) Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error {
 	filter := bson.M{"_id": id, "is_archived": false}
@@ -125,6 +201,7 @@ func (r *productRepo) Update(ctx context.Context, id primitive.ObjectID, product
 			"category":   product.Category,
 			"price":      product.Price,
 			"stock":      product.Stock,
+			"image_path": product.ImagePath,
 			"updated_at": time.Now(),
 		},
 	}

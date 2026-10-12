@@ -4,21 +4,25 @@ import "time"
 
 // CreateProductRequest adalah kontrak input dari client untuk membuat produk baru.
 type CreateProductRequest struct {
-	Barcode  string `json:"barcode"`
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	Price    int64  `json:"price"`
-	Stock    int64  `json:"stock"`
+	StoreID   string `json:"store_id,omitempty"`
+	Barcode   string `json:"barcode"`
+	Name      string `json:"name"`
+	Category  string `json:"category"`
+	Price     int64  `json:"price"`
+	Stock     int64  `json:"stock"`
+	ImagePath string `json:"image_path,omitempty"`
 }
 
 // ProductResponse adalah kontrak output ke client untuk data produk.
 type ProductResponse struct {
 	ID         string    `json:"id"`
+	StoreID    string    `json:"store_id,omitempty"`
 	Barcode    string    `json:"barcode"`
 	Name       string    `json:"name"`
 	Category   string    `json:"category"`
 	Price      int64     `json:"price"`
 	Stock      int64     `json:"stock"`
+	ImagePath  string    `json:"image_path,omitempty"`
 	IsArchived bool      `json:"is_archived"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -58,4 +62,17 @@ type TransactionResponse struct {
 	Status      string                    `json:"status"`
 	Items       []TransactionItemResponse `json:"items"`
 	CreatedAt   time.Time                 `json:"created_at"`
+}
+
+// BulkCreateProductsRequest adalah kontrak input untuk batch insert produk massal.
+type BulkCreateProductsRequest struct {
+	Products []CreateProductRequest `json:"products"`
+}
+
+// BulkCreateProductsResponse adalah kontrak output ringkasan batch insert produk massal.
+type BulkCreateProductsResponse struct {
+	TotalReceived int      `json:"total_received"`
+	TotalInserted int      `json:"total_inserted"`
+	TotalSkipped  int      `json:"total_skipped"`
+	SkippedErrors []string `json:"skipped_errors,omitempty"`
 }

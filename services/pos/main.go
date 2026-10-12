@@ -49,6 +49,7 @@ func main() {
 	storeRepo := repositories.NewStoreRepository()
 
 	// 3. Init Services
+	storageSvc := services.NewStorageService()
 	productSvc := services.NewProductService(productRepo)
 	checkoutSvc := services.NewCheckoutService(productRepo, txRepo)
 	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
@@ -68,6 +69,7 @@ func main() {
 	}
 
 	// 4. Init Handlers
+	uploadHandler := http.NewUploadHandler(storageSvc)
 	posHandler := http.NewPOSHandler(productSvc, checkoutSvc)
 	analyticsHandler := http.NewAnalyticsHandler(analyticsSvc)
 	authHandler := http.NewAuthHandler(authSvc)
@@ -79,6 +81,7 @@ func main() {
 	// 5. Setup Fiber HTTP Server
 	app := fiber.New(fiber.Config{
 		AppName: "LarisAI POS Service v1.0",
+		BodyLimit: 15 * 1024 * 1024, // 15MB for image uploads
 	})
 
 	app.Use(logger.New())
@@ -87,6 +90,9 @@ func main() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 	}))
+
+	// Static images route
+	app.Static("/api/v1/images", "./uploads")
 
 	// Health check endpoint
 	app.Get("/health", func(c *fiber.Ctx) error {
@@ -107,8 +113,9 @@ func main() {
 	subscriptionPublicApi := app.Group("/api/v1/subscription")
 	subscriptionHandler.RegisterPublicRoutes(subscriptionPublicApi)
 
-	// Protected Routes (POS, Analytics, Subscription Status)
+	// Protected Routes (POS, Analytics, Uploads, Subscription Status)
 	protectedApi := app.Group("/api/v1", middleware.Protected())
+	uploadHandler.RegisterRoutes(protectedApi)
 	posHandler.RegisterRoutes(protectedApi)
 	analyticsHandler.RegisterRoutes(protectedApi)
 

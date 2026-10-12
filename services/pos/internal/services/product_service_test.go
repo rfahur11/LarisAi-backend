@@ -49,6 +49,16 @@ func (m *mockProductRepo) Create(ctx context.Context, product *entity.Product) e
 	return nil
 }
 
+func (m *mockProductRepo) CreateBulk(ctx context.Context, products []entity.Product) (int, int, []string, error) {
+	count := 0
+	for _, p := range products {
+		p.ID = primitive.NewObjectID()
+		m.products[p.ID.Hex()] = &p
+		count++
+	}
+	return count, 0, nil, nil
+}
+
 func (m *mockProductRepo) Update(ctx context.Context, id primitive.ObjectID, product *entity.Product) error {
 	if _, ok := m.products[id.Hex()]; !ok {
 		return errors.New("not found")

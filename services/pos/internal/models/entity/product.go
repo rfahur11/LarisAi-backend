@@ -14,6 +14,7 @@ type Product struct {
 	Category   string             `bson:"category" json:"category"`
 	Price      int64              `bson:"price" json:"price"`
 	Stock      int64              `bson:"stock" json:"stock"`
+	ImagePath  string             `bson:"image_path,omitempty" json:"image_path,omitempty"`
 	IsArchived bool               `bson:"is_archived" json:"is_archived"`
 	CreatedAt  time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt  time.Time          `bson:"updated_at" json:"updated_at"`

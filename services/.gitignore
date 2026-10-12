@@ -3,3 +3,6 @@ __pycache__
 .venv
 .pytest_cache
 node_modules
+*.env.local
+.env.local
+pos/.env.local

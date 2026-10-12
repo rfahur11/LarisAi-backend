@@ -22,6 +22,7 @@ func (h *POSHandler) RegisterRoutes(router fiber.Router) {
 	// Product endpoints
 	router.Get("/products", h.GetProducts)
 	router.Post("/products", h.CreateProduct)
+	router.Post("/products/bulk", h.CreateBulkProducts)
 	router.Put("/products/:id", h.UpdateProduct)
 	router.Delete("/products/:id", h.DeleteProduct)
 	router.Get("/products/scan/:barcode", h.ScanBarcode)
@@ -51,6 +52,12 @@ func (h *POSHandler) CreateProduct(c *fiber.Ctx) error {
 		})
 	}
 
+	if req.StoreID == "" {
+		if storeID, ok := c.Locals("store_id").(string); ok && storeID != "" {
+			req.StoreID = storeID
+		}
+	}
+
 	res, err := h.productSvc.CreateProduct(c.UserContext(), req)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -59,6 +66,33 @@ func (h *POSHandler) CreateProduct(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
+
+func (h *POSHandler) CreateBulkProducts(c *fiber.Ctx) error {
+	var req dto.BulkCreateProductsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Format request tidak valid",
+		})
+	}
+
+	storeID, _ := c.Locals("store_id").(string)
+	for i := range req.Products {
+		if req.Products[i].StoreID == "" && storeID != "" {
+			req.Products[i].StoreID = storeID
+		}
+	}
+
+	res, err := h.productSvc.CreateBulkProducts(c.UserContext(), req)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":  "Gagal menyimpan sebagian produk massal",
+			"detail": err.Error(),
+			"data":   res,
+		})
+	}
+	return c.Status(fiber.StatusCreated).JSON(res)
+}
+
 
 func (h *POSHandler) UpdateProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
