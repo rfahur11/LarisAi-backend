@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/larisai/pos-service/internal/config"
 	"github.com/larisai/pos-service/internal/models/entity"
@@ -62,5 +63,23 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objID})
+	return err
+}
+
+func (r *UserRepository) UpdateStoreProfile(ctx context.Context, email string, storeName string, ownerName string, phone string) error {
+	filter := bson.M{"email": email}
+	setFields := bson.M{
+		"updated_at": time.Now(),
+	}
+	if storeName != "" {
+		setFields["store_name"] = storeName
+	}
+	if ownerName != "" {
+		setFields["name"] = ownerName
+	}
+	if phone != "" {
+		setFields["phone"] = phone
+	}
+	_, err := r.collection.UpdateOne(ctx, filter, bson.M{"$set": setFields})
 	return err
 }

@@ -351,3 +351,74 @@ func (s *AuthService) SeedAdmin(ctx context.Context) error {
 
 	return nil
 }
+
+func (s *AuthService) GetStoreProfile(ctx context.Context, email string, storeID string) (*dto.StoreProfileResponse, error) {
+	var user *entity.User
+	var err error
+	if email != "" {
+		user, err = s.userRepo.FindByEmail(ctx, email)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	storeName := "Toko Laris UMKM"
+	ownerName := "Kasir 01"
+	phone := ""
+	category := "Retail"
+
+	if user != nil {
+		if user.StoreName != "" {
+			storeName = user.StoreName
+		}
+		if user.Name != "" {
+			ownerName = user.Name
+		}
+		if user.Phone != "" {
+			phone = user.Phone
+		}
+		if storeID == "" {
+			storeID = user.StoreID
+		}
+	}
+
+	if s.storeRepo != nil && storeID != "" {
+		store, _ := s.storeRepo.FindByStoreID(ctx, storeID)
+		if store != nil {
+			if store.StoreName != "" {
+				storeName = store.StoreName
+			}
+			if store.OwnerPhone != "" {
+				phone = store.OwnerPhone
+			}
+			if store.Category != "" {
+				category = store.Category
+			}
+		}
+	}
+
+	return &dto.StoreProfileResponse{
+		StoreID:   storeID,
+		StoreName: storeName,
+		OwnerName: ownerName,
+		Email:     email,
+		Phone:     phone,
+		Category:  category,
+	}, nil
+}
+
+func (s *AuthService) UpdateStoreProfile(ctx context.Context, email string, storeID string, req *dto.UpdateStoreProfileRequest) (*dto.StoreProfileResponse, error) {
+	if strings.TrimSpace(req.StoreName) == "" {
+		return nil, errors.New("store_name cannot be empty")
+	}
+
+	if email != "" {
+		_ = s.userRepo.UpdateStoreProfile(ctx, email, req.StoreName, req.OwnerName, req.Phone)
+	}
+
+	if s.storeRepo != nil && storeID != "" {
+		_ = s.storeRepo.UpdateStoreProfile(ctx, storeID, req.StoreName, req.Phone, req.Category)
+	}
+
+	return s.GetStoreProfile(ctx, email, storeID)
+}

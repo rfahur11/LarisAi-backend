@@ -113,11 +113,15 @@ func main() {
 	subscriptionPublicApi := app.Group("/api/v1/subscription")
 	subscriptionHandler.RegisterPublicRoutes(subscriptionPublicApi)
 
-	// Protected Routes (POS, Analytics, Uploads, Subscription Status)
+	// Protected Routes (POS, Analytics, Uploads, Subscription Status, Store Profile)
 	protectedApi := app.Group("/api/v1", middleware.Protected())
 	uploadHandler.RegisterRoutes(protectedApi)
 	posHandler.RegisterRoutes(protectedApi)
 	analyticsHandler.RegisterRoutes(protectedApi)
+
+	// Store Profile Routes
+	protectedApi.Get("/store/profile", authHandler.GetStoreProfile)
+	protectedApi.Put("/store/profile", authHandler.UpdateStoreProfile)
 
 	subscriptionProtectedApi := protectedApi.Group("/subscription")
 	subscriptionHandler.RegisterProtectedRoutes(subscriptionProtectedApi)

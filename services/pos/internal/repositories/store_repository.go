@@ -88,3 +88,21 @@ func (r *StoreRepository) UpdateSubscription(ctx context.Context, storeID string
 	_, err := r.collection.UpdateOne(ctx, filter, update)
 	return err
 }
+
+func (r *StoreRepository) UpdateStoreProfile(ctx context.Context, storeID string, storeName string, phone string, category string) error {
+	filter := bson.M{"store_id": storeID}
+	setFields := bson.M{
+		"updated_at": time.Now(),
+	}
+	if storeName != "" {
+		setFields["store_name"] = storeName
+	}
+	if phone != "" {
+		setFields["owner_phone"] = phone
+	}
+	if category != "" {
+		setFields["category"] = category
+	}
+	_, err := r.collection.UpdateOne(ctx, filter, bson.M{"$set": setFields})
+	return err
+}
