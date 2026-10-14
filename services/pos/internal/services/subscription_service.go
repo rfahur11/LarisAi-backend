@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/larisai/pos-service/internal/models/dto"
@@ -12,10 +13,11 @@ import (
 
 type SubscriptionService struct {
 	storeRepo *repositories.StoreRepository
+	userRepo  *repositories.UserRepository
 }
 
-func NewSubscriptionService(storeRepo *repositories.StoreRepository) *SubscriptionService {
-	return &SubscriptionService{storeRepo: storeRepo}
+func NewSubscriptionService(storeRepo *repositories.StoreRepository, userRepo *repositories.UserRepository) *SubscriptionService {
+	return &SubscriptionService{storeRepo: storeRepo, userRepo: userRepo}
 }
 
 func (s *SubscriptionService) GetStatus(ctx context.Context, storeID string) (*dto.SubscriptionStatusResponse, error) {
@@ -170,3 +172,124 @@ func (s *SubscriptionService) SyncSubscription(ctx context.Context, req *dto.Sub
 		IsGracePeriod: false,
 	}, nil
 }
+
+// ListAllMerchants returns all stores registered in MongoDB, mapped with their owner user details
+func (s *SubscriptionService) ListAllMerchants(ctx context.Context) ([]dto.AdminMerchantResponse, error) {
+	stores, err := s.storeRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var users []entity.User
+	if s.userRepo != nil {
+		users, _ = s.userRepo.FindAll(ctx)
+	}
+
+	ownerMap := make(map[string]entity.User)
+	for _, u := range users {
+		if u.StoreID != "" {
+			ownerMap[u.StoreID] = u
+		}
+		if u.Email != "" {
+			ownerMap[u.Email] = u
+		}
+	}
+
+	result := make([]dto.AdminMerchantResponse, 0, len(stores))
+	for _, st := range stores {
+		ownerName := ""
+		ownerEmail := st.OwnerEmail
+		ownerPhone := st.OwnerPhone
+
+		if u, exists := ownerMap[st.StoreID]; exists {
+			if ownerName == "" {
+				ownerName = u.Name
+			}
+			if ownerEmail == "" {
+				ownerEmail = u.Email
+			}
+			if ownerPhone == "" {
+				ownerPhone = u.Phone
+			}
+		} else if u, exists := ownerMap[st.OwnerEmail]; exists {
+			if ownerName == "" {
+				ownerName = u.Name
+			}
+			if ownerPhone == "" {
+				ownerPhone = u.Phone
+			}
+		}
+
+		if ownerName == "" {
+			ownerName = st.StoreName
+		}
+
+		result = append(result, dto.AdminMerchantResponse{
+			ID:          st.ID,
+			StoreID:     st.StoreID,
+			StoreName:   st.StoreName,
+			OwnerName:   ownerName,
+			Email:       ownerEmail,
+			Phone:       ownerPhone,
+			Category:    st.Category,
+			PlanTier:    st.PlanTier,
+			Status:      st.SubscriptionStatus,
+			TrialEndsAt: st.TrialEndsAt,
+			ExpiresAt:   st.ExpiresAt,
+			MaxOutlets:  st.MaxOutlets,
+			CreatedAt:   st.CreatedAt,
+			UpdatedAt:   st.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+// AdminUpdateSubscription updates a store's subscription tier, status, outlets, or extends expiration
+func (s *SubscriptionService) AdminUpdateSubscription(ctx context.Context, req *dto.AdminUpdateSubscriptionRequest) (*dto.SubscriptionStatusResponse, error) {
+	store, err := s.storeRepo.FindByStoreID(ctx, req.StoreID)
+	if err != nil {
+		return nil, err
+	}
+	if store == nil {
+		return nil, errors.New("store not found")
+	}
+
+	now := time.Now()
+	newTier := req.PlanTier
+	if newTier == "" {
+		newTier = store.PlanTier
+	}
+
+	newStatus := req.Status
+	if newStatus == "" {
+		newStatus = store.SubscriptionStatus
+	}
+
+	var newExpiresAt = store.ExpiresAt
+	if req.ExtendMonths > 0 {
+		baseTime := now
+		if store.ExpiresAt != nil && store.ExpiresAt.After(now) {
+			baseTime = *store.ExpiresAt
+		}
+		exp := baseTime.AddDate(0, req.ExtendMonths, 0)
+		newExpiresAt = &exp
+		newStatus = entity.SubscriptionStatusActive
+	}
+
+	maxOutlets := req.MaxOutlets
+	if maxOutlets <= 0 {
+		maxOutlets = store.MaxOutlets
+	}
+
+	if req.StoreName != "" {
+		_ = s.storeRepo.UpdateStoreProfile(ctx, req.StoreID, req.StoreName, "", "")
+	}
+
+	if err := s.storeRepo.UpdateSubscriptionDetails(ctx, req.StoreID, newTier, newStatus, newExpiresAt, maxOutlets); err != nil {
+		return nil, err
+	}
+
+	return s.GetStatus(ctx, req.StoreID)
+}
+

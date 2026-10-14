@@ -106,3 +106,39 @@ func (r *StoreRepository) UpdateStoreProfile(ctx context.Context, storeID string
 	_, err := r.collection.UpdateOne(ctx, filter, bson.M{"$set": setFields})
 	return err
 }
+
+func (r *StoreRepository) FindAll(ctx context.Context) ([]entity.Store, error) {
+	opts := options.Find().SetSort(bson.M{"created_at": -1})
+	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var stores []entity.Store
+	if err := cursor.All(ctx, &stores); err != nil {
+		return nil, err
+	}
+	return stores, nil
+}
+
+func (r *StoreRepository) UpdateSubscriptionDetails(ctx context.Context, storeID string, planTier string, status string, expiresAt *time.Time, maxOutlets int) error {
+	filter := bson.M{"store_id": storeID}
+	setFields := bson.M{
+		"updated_at": time.Now(),
+	}
+	if planTier != "" {
+		setFields["plan_tier"] = planTier
+	}
+	if status != "" {
+		setFields["subscription_status"] = status
+	}
+	if expiresAt != nil {
+		setFields["expires_at"] = expiresAt
+	}
+	if maxOutlets > 0 {
+		setFields["max_outlets"] = maxOutlets
+	}
+	_, err := r.collection.UpdateOne(ctx, filter, bson.M{"$set": setFields})
+	return err
+}

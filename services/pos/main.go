@@ -55,7 +55,7 @@ func main() {
 	analyticsSvc := services.NewAnalyticsService(analyticsRepo)
 	authSvc := services.NewAuthService(userRepo, storeRepo)
 	userSvc := services.NewUserService(userRepo)
-	subscriptionSvc := services.NewSubscriptionService(storeRepo)
+	subscriptionSvc := services.NewSubscriptionService(storeRepo, userRepo)
 
 	// AI Engine URL
 	aiEngineURL := os.Getenv("AI_ENGINE_URL")
@@ -112,6 +112,9 @@ func main() {
 
 	subscriptionPublicApi := app.Group("/api/v1/subscription")
 	subscriptionHandler.RegisterPublicRoutes(subscriptionPublicApi)
+
+	subscriptionAdminApi := app.Group("/api/v1/subscription/admin")
+	subscriptionHandler.RegisterAdminRoutes(subscriptionAdminApi)
 
 	// Protected Routes (POS, Analytics, Uploads, Subscription Status, Store Profile)
 	protectedApi := app.Group("/api/v1", middleware.Protected())
